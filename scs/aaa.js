@@ -5,77 +5,55 @@ const s = require(__dirname + "/../settings");
 const path = require("path");
 const fs = require("fs");
 
-// VCard Contact (Meta AI Verified)
+// Meta AI “verified” contact with image
 const quotedContact = {
-  key: {
-    fromMe: false,
-    participant: `0@s.whatsapp.net`,
-    remoteJid: "status@broadcast"
-  },
-  message: {
-    contactMessage: {
-      displayName: "Meta AI ✅",
-      vcard: 
-`BEGIN:VCARD
-VERSION:3.0
-FN:Meta AI ✅
-ORG:Meta AI Bot;
-TEL;type=CELL;type=VOICE;waid=254700000001:+254 700 000001
-END:VCARD`
+    key: {
+        fromMe: false,
+        participant: `0@s.whatsapp.net`,
+        remoteJid: "status@broadcast"
+    },
+    message: {
+        imageMessage: {
+            url: "https://files.catbox.moe/8rd685.jpg", // Weka picha yako ya Meta AI hapa
+            mimetype: "image/jpeg",
+            caption: "Meta AI ✅"
+        }
     }
-  }
 };
 
 // Newsletter context
 const newsletterContext = {
-  contextInfo: {
-    forwardingScore: 999,
-    isForwarded: true,
-    forwardedNewsletterMessageInfo: {
-      newsletterJid: "120363382023564830@newsletter",
-      newsletterName: "Meta AI Updates",
-      serverMessageId: 1
+    contextInfo: {
+        forwardingScore: 999,
+        isForwarded: true,
+        forwardedNewsletterMessageInfo: {
+            newsletterJid: "120363382023564830@newsletter",
+            newsletterName: "Meta AI Updates",
+            serverMessageId: 1
+        }
     }
-  }
 };
 
-// Function to send random image or fallback to text
-async function sendMetaAIAlive(zk, dest, repondre) {
+// Function to send random image from /scs folder
+async function sendAliveImage(zk, dest, caption, repondre) {
     const scsFolder = path.join(__dirname, "../scs");
-    const files = fs.existsSync(scsFolder) ? fs.readdirSync(scsFolder) : [];
-    const images = files.filter(f => /^menu\d+\.jpg$/i.test(f));
-    const randomImage = images.length > 0 ? images[Math.floor(Math.random() * images.length)] : null;
-    const imagePath = randomImage ? path.join(scsFolder, randomImage) : null;
+    const images = fs.existsSync(scsFolder) ? fs.readdirSync(scsFolder).filter(f => /^menu\d+\.jpg$/i.test(f)) : [];
 
-    const time = moment().tz('Etc/GMT').format('HH:mm:ss');
-    const date = moment().format('DD/MM/YYYY');
-
-    const aliveMsg = `┏━━━━━━━━━━━━━━━━━━━━━━━┓
-┃       Meta AI ✅ ALIVE        ┃
-┣━━━━━━━━━━━━━━━━━━━━━━━┫
-┃ 📅 Date    : ${date}      
-┃ 🕒 Time    : ${time}      
-┃ 👑 Owner   : ${s.OWNER_NAME}   
-┃ 🔵 Platform : *VPS*  
-┗━━━━━━━━━━━━━━━━━━━━━━━┛`;
-
-    try {
-        if (imagePath) {
-            await zk.sendMessage(dest, {
-                image: { url: imagePath },
-                caption: aliveMsg,
-                ...newsletterContext
-            }, { quoted: quotedContact });
-        } else {
-            await zk.sendMessage(dest, { text: aliveMsg, ...newsletterContext }, { quoted: quotedContact });
-        }
-    } catch (e) {
-        console.error("Error:", e);
-        repondre(`❌ Failed to send Meta AI Alive message: ${e.message}`);
+    if (images.length === 0) {
+        return repondre("📁 No images found in /scs folder.");
     }
+
+    const randomImage = images[Math.floor(Math.random() * images.length)];
+    const imagePath = path.join(scsFolder, randomImage);
+
+    await zk.sendMessage(dest, {
+        image: { url: imagePath },
+        caption: caption,
+        ...newsletterContext
+    }, { quoted: quotedContact });
 }
 
-// Register alive command
+// Alive command registration
 bmbtz(
     {
         nomCom: 'ali',
@@ -84,12 +62,45 @@ bmbtz(
     },
     async (dest, zk, { arg, repondre, superUser }) => {
         const data = await getDataFromAlive();
+        const time = moment().tz('Etc/GMT').format('HH:mm:ss');
+        const date = moment().format('DD/MM/YYYY');
 
-        // Show alive message if no arguments
         if (!arg || !arg[0]) {
-            await sendMetaAIAlive(zk, dest, repondre);
+            const aliveMsg = `┏━━━━━━━━━━━━━━━━━━━━━━━┓
+┃       Meta AI ✅ ALIVE        ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━┫
+┃ 📅 Date    : ${date}
+┃ 🕒 Time    : ${time}
+┃ 👑 Owner   : ${s.OWNER_NAME}
+┃ 🔵 Platform : VPS
+┗━━━━━━━━━━━━━━━━━━━━━━━┛`;
+
+            try {
+                if (data && data.lien) {
+                    const lien = data.lien;
+                    if (lien.match(/\.(mp4|gif)$/i)) {
+                        await zk.sendMessage(dest, {
+                            video: { url: lien },
+                            caption: aliveMsg,
+                            ...newsletterContext
+                        }, { quoted: quotedContact });
+                    } else if (lien.match(/\.(jpeg|png|jpg)$/i)) {
+                        await zk.sendMessage(dest, {
+                            image: { url: lien },
+                            caption: aliveMsg,
+                            ...newsletterContext
+                        }, { quoted: quotedContact });
+                    } else {
+                        await sendAliveImage(zk, dest, aliveMsg, repondre);
+                    }
+                } else {
+                    await sendAliveImage(zk, dest, aliveMsg, repondre);
+                }
+            } catch (e) {
+                console.error("Error:", e);
+                repondre(`❌ Failed to show Meta AI Alive Message: ${e.message}`);
+            }
         } else {
-            // Only superUser can update alive message
             if (!superUser) {
                 repondre("❌ Only the owner can update Alive message.");
                 return;
