@@ -6,7 +6,7 @@ const { igdl } = require('ruhend-scraper');
 const conf = require(__dirname + "/../settings");
 const getFBInfo = require("@xaviabot/fb-downloader");
 
-// Context info function (hakuna constants, hakuna namba ya simu, hakuna body, hakuna thumbnail)
+// Context info function
 function commonContextInfo() {
   try {
     return {
@@ -20,7 +20,6 @@ function commonContextInfo() {
       externalAdReply: {
         showAdAttribution: true,
         title: conf.BOT || 'Bmb Tech Updates',
-        // Namba ya simu na sourceUrl imeondolewa kabisa hapa!
         mediaType: 1,
         renderLargerThumbnail: true,
       },
@@ -31,6 +30,7 @@ function commonContextInfo() {
   }
 }
 
+// Format views
 function formatViews(views) {
   if (typeof views === 'number') {
     if (views >= 1000000) {
@@ -43,7 +43,7 @@ function formatViews(views) {
   return views;
 }
 
-// FACEBOOK
+// ================= FACEBOOK =================
 bmbtz({
   nomCom: "facebook1",
   aliases: ["fbdl", "facebookdl", "fb"],
@@ -51,23 +51,16 @@ bmbtz({
   reaction: "📽️"
 }, async (dest, zk, commandeOptions) => {
   const { ms, arg } = commandeOptions;
-
-  if (!arg || !arg[0]) {
-    return repondre(zk, dest, ms, 'Please provide a Facebook video URL!');
-  }
-
+  if (!arg || !arg[0]) return repondre(zk, dest, ms, 'Please provide a Facebook video URL!');
   const fbUrl = arg[0].trim();
   if (!fbUrl.includes('https://') || !fbUrl.includes('facebook.com')) {
     return repondre(zk, dest, ms, "Please provide a valid Facebook video URL.");
   }
-
   try {
     const videoData = await getFBInfo(fbUrl);
-
     if (!videoData || !videoData.sd) {
       return repondre(zk, dest, ms, "Could not retrieve video information. The link may be invalid or private.");
     }
-
     const caption = `
      *${conf.BOT || 'Facebook Downloader'} Facebook Downloader*
     |__________________________|
@@ -86,708 +79,122 @@ bmbtz({
     |-᳆  5. As Voice Message
     |__________________________|
     `;
-
     const message = await zk.sendMessage(dest, {
       image: { url: videoData.thumbnail || '' },
-      caption: caption,
+      caption,
       contextInfo: commonContextInfo()
     }, { quoted: ms });
-
     const messageId = message.key.id;
-
     const replyHandler = async (update) => {
       try {
-        const messageContent = update.messages[0];
-        if (!messageContent.message) return;
-
-        const isReply = messageContent.message.extendedTextMessage?.contextInfo?.stanzaId === messageId;
+        const msg = update.messages[0];
+        if (!msg.message) return;
+        const isReply = msg.message.extendedTextMessage?.contextInfo?.stanzaId === messageId;
         if (!isReply) return;
-
-        const responseText = messageContent.message.conversation ||
-          messageContent.message.extendedTextMessage?.text;
-
-        if (!['1', '2', '3', '4', '5'].includes(responseText)) {
-          return await zk.sendMessage(dest, {
-            text: "Invalid option. Please reply with a number between 1-5.",
-            quoted: messageContent,
-            contextInfo: commonContextInfo()
-          });
+        const responseText = msg.message.conversation || msg.message.extendedTextMessage?.text;
+        if (!['1','2','3','4','5'].includes(responseText)) {
+          return zk.sendMessage(dest, { text: "Invalid option. Reply with 1-5.", quoted: msg, contextInfo: commonContextInfo() });
         }
-
-        await zk.sendMessage(dest, {
-          react: { text: '⬇️', key: messageContent.key },
-        });
-
+        await zk.sendMessage(dest, { react: { text: '⬇️', key: msg.key } });
         switch (responseText) {
-          case '1':
-            await zk.sendMessage(dest, {
-              video: { url: videoData.sd },
-              caption: `*${conf.BOT || 'Facebook Downloader'}* - SD Quality`,
-              contextInfo: commonContextInfo()
-            }, { quoted: messageContent });
-            break;
-
-          case '2':
-            if (videoData.hd) {
-              await zk.sendMessage(dest, {
-                video: { url: videoData.hd },
-                caption: `*${conf.BOT || 'Facebook Downloader'}* - HD Quality`,
-                contextInfo: commonContextInfo()
-              }, { quoted: messageContent });
-            } else {
-              await zk.sendMessage(dest, {
-                text: "HD quality not available. Sending SD quality instead.",
-                quoted: messageContent,
-                contextInfo: commonContextInfo()
-              });
-              await zk.sendMessage(dest, {
-                video: { url: videoData.sd },
-                caption: `*${conf.BOT || 'Facebook Downloader'}* - SD Quality`,
-                contextInfo: commonContextInfo()
-              }, { quoted: messageContent });
-            }
-            break;
-
-          case '3':
-            await zk.sendMessage(dest, {
-              audio: { url: videoData.sd },
-              mimetype: "audio/mpeg",
-              caption: `*${conf.BOT || 'Facebook Downloader'}* - Audio`,
-              contextInfo: commonContextInfo()
-            }, { quoted: messageContent });
-            break;
-
-          case '4':
-            await zk.sendMessage(dest, {
-              document: { url: videoData.sd },
-              mimetype: "video/mp4",
-              fileName: `${conf.BOT || 'Facebook'}_${Date.now()}.mp4`,
-              caption: `*${conf.BOT || 'Facebook Downloader'}* - Video Document`,
-              contextInfo: commonContextInfo()
-            }, { quoted: messageContent });
-            break;
-
-          case '5':
-            await zk.sendMessage(dest, {
-              audio: { url: videoData.sd },
-              mimetype: "audio/ogg; codecs=opus",
-              ptt: true,
-              caption: `*${conf.BOT || 'Facebook Downloader'}* - Voice Message`,
-              contextInfo: commonContextInfo()
-            }, { quoted: messageContent });
-            break;
+          case '1': await zk.sendMessage(dest, { video: { url: videoData.sd }, caption: "SD Quality", contextInfo: commonContextInfo() }, { quoted: msg }); break;
+          case '2': await zk.sendMessage(dest, { video: { url: videoData.hd || videoData.sd }, caption: "HD Quality", contextInfo: commonContextInfo() }, { quoted: msg }); break;
+          case '3': await zk.sendMessage(dest, { audio: { url: videoData.sd }, mimetype: "audio/mpeg", caption: "Audio Only", contextInfo: commonContextInfo() }, { quoted: msg }); break;
+          case '4': await zk.sendMessage(dest, { document: { url: videoData.sd }, mimetype: "video/mp4", fileName: `FB_${Date.now()}.mp4`, caption: "Video Doc", contextInfo: commonContextInfo() }, { quoted: msg }); break;
+          case '5': await zk.sendMessage(dest, { audio: { url: videoData.sd }, mimetype: "audio/ogg; codecs=opus", ptt: true, caption: "Voice Msg", contextInfo: commonContextInfo() }, { quoted: msg }); break;
         }
-
-        await zk.sendMessage(dest, {
-          react: { text: '✅', key: messageContent.key },
-        });
-
-      } catch (error) {
-        console.error("Error handling reply:", error);
-        await zk.sendMessage(dest, {
-          text: "An error occurred while processing your request. Please try again.",
-          quoted: update.messages[0],
-          contextInfo: commonContextInfo()
-        });
-      }
+        await zk.sendMessage(dest, { react: { text: '✅', key: msg.key } });
+      } catch (err) { console.error("Error:", err); }
     };
-
     zk.ev.on("messages.upsert", replyHandler);
-    setTimeout(() => {
-      zk.ev.off("messages.upsert", replyHandler);
-    }, 300000);
-
+    setTimeout(() => { zk.ev.off("messages.upsert", replyHandler); }, 300000);
   } catch (error) {
-    console.error("Facebook download error:", error);
-    repondre(zk, dest, ms, `Failed to download video. Error: ${error.message}\nYou can try with another link or check if the video is public.`);
+    repondre(zk, dest, ms, `Error: ${error.message}`);
   }
 });
 
-// TWITTER
-bmbtz({
-  nomCom: "twitter",
-  aliases: ["twitdl", "twitterdl", "tw", "xdl"],
-  categorie: "Download",
-  reaction: "🐦"
-}, async (dest, zk, commandeOptions) => {
-  const { ms, arg } = commandeOptions;
-
-  if (!arg || !arg[0]) {
-    return repondre(zk, dest, ms, 'Please provide a Twitter video URL!');
-  }
-
-  const tweetUrl = arg[0].trim();
-  if (!tweetUrl.includes('https://') || !tweetUrl.includes('twitter.com')) {
-    return repondre(zk, dest, ms, "Please provide a valid Twitter URL.");
-  }
-
-  try {
-    const apiUrl = `https://apis-keith.vercel.app/download/twitter?url=${encodeURIComponent(tweetUrl)}`;
-    const response = await axios.get(apiUrl);
-    const tweetData = response.data;
-
-    if (!tweetData.status || !tweetData.result) {
-      return repondre(zk, dest, ms, "Could not retrieve video information. The tweet may be private or not contain media.");
-    }
-
-    const videoInfo = tweetData.result;
-
-    const caption = `
-     *${conf.BOT || 'Twitter Downloader'} twitter Downloader*
-    |__________________________|
-    |       *ᴅᴇsᴄʀɪᴘᴛɪᴏɴ*  
-    ${videoInfo.desc || 'No description available'}
-    |_________________________|
-    | REPLY WITH BELOW NUMBERS
-    |_________________________|
-    |____  *ᴠɪᴅᴇᴏ ᴅᴏᴡɴʟᴏᴀᴅ*  ____
-    |-᳆  1. SD Quality (480p)
-    |-᳆  2. HD Quality (720p)
-    |_________________________|
-    |____  *ᴀᴜᴅɪᴏ ᴅᴏᴡɴʟᴏᴀᴅ*  ____
-    |-᳆  3. Audio Only
-    |-᳆  4. As Document
-    |__________________________|
-    `;
-
-    const message = await zk.sendMessage(dest, {
-      image: { url: videoInfo.thumb || '' },
-      caption: caption,
-      contextInfo: commonContextInfo()
-    }, { quoted: ms });
-
-    const messageId = message.key.id;
-
-    const replyHandler = async (update) => {
-      try {
-        const messageContent = update.messages[0];
-        if (!messageContent.message) return;
-
-        const isReply = messageContent.message.extendedTextMessage?.contextInfo?.stanzaId === messageId;
-        if (!isReply) return;
-
-        const responseText = messageContent.message.conversation ||
-          messageContent.message.extendedTextMessage?.text;
-
-        if (!['1', '2', '3', '4'].includes(responseText)) {
-          return await zk.sendMessage(dest, {
-            text: "Invalid option. Please reply with a number between 1-4.",
-            quoted: messageContent,
-            contextInfo: commonContextInfo()
-          });
-        }
-
-        await zk.sendMessage(dest, {
-          react: { text: '⬇️', key: messageContent.key },
-        });
-
-        switch (responseText) {
-          case '1':
-            await zk.sendMessage(dest, {
-              video: { url: videoInfo.video_sd },
-              caption: `*${conf.BOT || 'Twitter Downloader'}* - SD Quality`,
-              contextInfo: commonContextInfo()
-            }, { quoted: messageContent });
-            break;
-
-          case '2':
-            if (videoInfo.video_hd) {
-              await zk.sendMessage(dest, {
-                video: { url: videoInfo.video_hd },
-                caption: `*${conf.BOT || 'Twitter Downloader'}* - HD Quality`,
-                contextInfo: commonContextInfo()
-              }, { quoted: messageContent });
-            } else {
-              await zk.sendMessage(dest, {
-                text: "HD quality not available. Sending SD quality instead.",
-                quoted: messageContent,
-                contextInfo: commonContextInfo()
-              });
-              await zk.sendMessage(dest, {
-                video: { url: videoInfo.video_sd },
-                caption: `*${conf.BOT || 'Twitter Downloader'}* - SD Quality`,
-                contextInfo: commonContextInfo()
-              }, { quoted: messageContent });
-            }
-            break;
-
-          case '3':
-            await zk.sendMessage(dest, {
-              audio: { url: videoInfo.audio },
-              mimetype: "audio/mpeg",
-              caption: `*${conf.BOT || 'Twitter Downloader'}* - Audio`,
-              contextInfo: commonContextInfo()
-            }, { quoted: messageContent });
-            break;
-
-          case '4':
-            await zk.sendMessage(dest, {
-              document: { url: videoInfo.video_sd },
-              mimetype: "video/mp4",
-              fileName: `${conf.BOT || 'Twitter'}_${Date.now()}.mp4`,
-              caption: `*${conf.BOT || 'Twitter Downloader'}* - Video Document`,
-              contextInfo: commonContextInfo()
-            }, { quoted: messageContent });
-            break;
-        }
-
-        await zk.sendMessage(dest, {
-          react: { text: '✅', key: messageContent.key },
-        });
-
-      } catch (error) {
-        console.error("Error handling reply:", error);
-        await zk.sendMessage(dest, {
-          text: "An error occurred while processing your request. Please try again.",
-          quoted: update.messages[0],
-          contextInfo: commonContextInfo()
-        });
-      }
-    };
-
-    zk.ev.on("messages.upsert", replyHandler);
-    setTimeout(() => {
-      zk.ev.off("messages.upsert", replyHandler);
-    }, 300000);
-
-  } catch (error) {
-    console.error("Twitter download error:", error);
-    repondre(zk, dest, ms, `Failed to download tweet. Error: ${error.message}\nYou can try with another link or check if the tweet is public.`);
-  }
-});
-
-// INSTAGRAM
+// ================= INSTAGRAM =================
 bmbtz({
   nomCom: "instagram",
-  aliases: ["igdl", "insta", "ig"],
+  aliases: ["igdl", "ig"],
   categorie: "Download",
   reaction: "📸"
 }, async (dest, zk, commandeOptions) => {
   const { ms, arg } = commandeOptions;
-
-  if (!arg || !arg[0]) {
-    return repondre(zk, dest, ms, 'Please provide an Instagram URL!');
-  }
-
-  const igUrl = arg[0].trim();
-  if (!igUrl.includes('https://') || !igUrl.includes('instagram.com')) {
-    return repondre(zk, dest, ms, "Please provide a valid Instagram URL.");
-  }
-
+  if (!arg || !arg[0]) return repondre(zk, dest, ms, 'Provide an Instagram URL!');
   try {
-    const apiUrl = `https://apis-keith.vercel.app/download/instagramdl?url=${encodeURIComponent(igUrl)}`;
-    const response = await axios.get(apiUrl);
-    const data = response.data;
-
-    if (!data.status || !data.result || !data.result.downloadUrl) {
-      return repondre(zk, dest, ms, "Could not retrieve video. The post may be private or unavailable.");
-    }
-
-    const downloadUrl = data.result.downloadUrl;
-    const isVideo = data.result.type === 'mp4';
-
-    const caption = `
-     *${conf.BOT || 'Instagram Downloader'} Instagram Downloader*
-    |__________________________|
-    | Media Type: ${isVideo ? 'Video' : 'Unknown'}
-    |_________________________|
-    | REPLY WITH BELOW NUMBERS
-    |_________________________|
-    |-᳆  1. Video
-    |-᳆  2. Video as Document
-    |-᳆  3. Audio Only
-    |-᳆  4. Audio as Document
-    |__________________________|
-    `;
-
-    const message = await zk.sendMessage(dest, {
-      image: { url: conf.URL || '' },
-      caption: caption,
-      contextInfo: commonContextInfo()
-    }, { quoted: ms });
-
-    const messageId = message.key.id;
-
-    const replyHandler = async (update) => {
-      try {
-        const messageContent = update.messages[0];
-        if (!messageContent.message) return;
-
-        const isReply = messageContent.message.extendedTextMessage?.contextInfo?.stanzaId === messageId;
-        if (!isReply) return;
-
-        const responseText = messageContent.message.conversation ||
-          messageContent.message.extendedTextMessage?.text;
-
-        if (!['1', '2', '3', '4'].includes(responseText)) {
-          return await zk.sendMessage(dest, {
-            text: "Invalid option. Please reply with a number between 1-4.",
-            quoted: messageContent,
-            contextInfo: commonContextInfo()
-          });
-        }
-
-        await zk.sendMessage(dest, {
-          react: { text: '⬇️', key: messageContent.key },
-        });
-
-        switch (responseText) {
-          case '1':
-            await zk.sendMessage(dest, {
-              video: { url: downloadUrl },
-              caption: `*${conf.BOT || 'Instagram Downloader'}* - Video`,
-              contextInfo: commonContextInfo()
-            }, { quoted: messageContent });
-            break;
-
-          case '2':
-            await zk.sendMessage(dest, {
-              document: { url: downloadUrl },
-              mimetype: "video/mp4",
-              fileName: `${conf.BOT || 'Instagram'}_${Date.now()}.mp4`,
-              caption: `*${conf.BOT || 'Instagram Downloader'}* - Video Document`,
-              contextInfo: commonContextInfo()
-            }, { quoted: messageContent });
-            break;
-
-          case '3':
-            await zk.sendMessage(dest, {
-              audio: { url: downloadUrl },
-              mimetype: "audio/mpeg",
-              caption: `*${conf.BOT || 'Instagram Downloader'}* - Audio`,
-              contextInfo: commonContextInfo()
-            }, { quoted: messageContent });
-            break;
-
-          case '4':
-            await zk.sendMessage(dest, {
-              document: { url: downloadUrl },
-              mimetype: "audio/mpeg",
-              fileName: `${conf.BOT || 'Instagram'}_${Date.now()}.mp3`,
-              caption: `*${conf.BOT || 'Instagram Downloader'}* - Audio Document`,
-              contextInfo: commonContextInfo()
-            }, { quoted: messageContent });
-            break;
-        }
-
-        await zk.sendMessage(dest, {
-          react: { text: '✅', key: messageContent.key },
-        });
-
-      } catch (error) {
-        console.error("Error handling reply:", error);
-        await zk.sendMessage(dest, {
-          text: "An error occurred while processing your request. Please try again.",
-          quoted: update.messages[0],
-          contextInfo: commonContextInfo()
-        });
+    const data = await igdl(arg[0]);
+    if (!data || data.length === 0) return repondre(zk, dest, ms, "No media found.");
+    for (let item of data) {
+      if (item.url.includes(".mp4")) {
+        await zk.sendMessage(dest, { video: { url: item.url }, caption: "Instagram Video", contextInfo: commonContextInfo() }, { quoted: ms });
+      } else {
+        await zk.sendMessage(dest, { image: { url: item.url }, caption: "Instagram Image", contextInfo: commonContextInfo() }, { quoted: ms });
       }
-    };
-
-    zk.ev.on("messages.upsert", replyHandler);
-    setTimeout(() => {
-      zk.ev.off("messages.upsert", replyHandler);
-    }, 300000);
-
-  } catch (error) {
-    console.error("Instagram download error:", error);
-    repondre(zk, dest, ms, `Failed to download Instagram media. Error: ${error.message}\nYou can try with another link or check if the post is public.`);
-  }
+    }
+  } catch (err) { repondre(zk, dest, ms, "Error: " + err.message); }
 });
 
-// TIKTOK
+// ================= TWITTER =================
 bmbtz({
-  nomCom: "tiktok4",
-  aliases: ["ttdl", "tiktokdl", "tt"],
+  nomCom: "twitter",
+  aliases: ["tw", "twitdl"],
+  categorie: "Download",
+  reaction: "🐦"
+}, async (dest, zk, commandeOptions) => {
+  const { ms, arg } = commandeOptions;
+  if (!arg || !arg[0]) return repondre(zk, dest, ms, 'Provide a Twitter URL!');
+  try {
+    const res = await axios.get(`https://api.vihangayt.me/download/twitter?url=${encodeURIComponent(arg[0])}`);
+    const video = res.data.data.HD || res.data.data.SD;
+    await zk.sendMessage(dest, { video: { url: video }, caption: "Twitter Video", contextInfo: commonContextInfo() }, { quoted: ms });
+  } catch (err) { repondre(zk, dest, ms, "Error: " + err.message); }
+});
+
+// ================= TIKTOK =================
+bmbtz({
+  nomCom: "tiktok",
+  aliases: ["tt", "ttdl"],
   categorie: "Download",
   reaction: "🎵"
 }, async (dest, zk, commandeOptions) => {
   const { ms, arg } = commandeOptions;
-
-  if (!arg || !arg[0]) {
-    return repondre(zk, dest, ms, 'Please provide a TikTok URL!');
-  }
-
-  const tiktokUrl = arg[0].trim();
-  if (!tiktokUrl.includes('https://') || !(tiktokUrl.includes('tiktok.com') || tiktokUrl.includes('vt.tiktok.com'))) {
-    return repondre(zk, dest, ms, "Please provide a valid TikTok URL.");
-  }
-
+  if (!arg || !arg[0]) return repondre(zk, dest, ms, 'Provide a TikTok URL!');
   try {
-    const apiUrl = `https://apis-keith.vercel.app/download/tiktokdl?url=${encodeURIComponent(tiktokUrl)}`;
-    const response = await axios.get(apiUrl);
-    const data = response.data;
-
-    if (!data.status || !data.result) {
-      return repondre(zk, dest, ms, "Could not retrieve video. The TikTok may be private or unavailable.");
-    }
-
-    const videoInfo = data.result;
-
-    const caption = `
-     *${conf.BOT || 'TikTok Downloader'} TikTok Downloader*
-    |__________________________|
-    | *Title*: ${videoInfo.title || 'No title'}
-    | *Caption*: ${videoInfo.caption || 'No caption'}
-    |_________________________|
-    | REPLY WITH BELOW NUMBERS
-    |_________________________|
-    |-᳆  1. Video (No Watermark)
-    |-᳆  2. Video as Document
-    |-᳆  3. Audio Only
-    |-᳆  4. Audio as Document
-    |__________________________|
-    `;
-
-    const message = await zk.sendMessage(dest, {
-      image: { url: videoInfo.thumbnail || conf.URL || '' },
-      caption: caption,
-      contextInfo: commonContextInfo()
-    }, { quoted: ms });
-
-    const messageId = message.key.id;
-
-    const replyHandler = async (update) => {
-      try {
-        const messageContent = update.messages[0];
-        if (!messageContent.message) return;
-
-        const isReply = messageContent.message.extendedTextMessage?.contextInfo?.stanzaId === messageId;
-        if (!isReply) return;
-
-        const responseText = messageContent.message.conversation ||
-          messageContent.message.extendedTextMessage?.text;
-
-        if (!['1', '2', '3', '4'].includes(responseText)) {
-          return await zk.sendMessage(dest, {
-            text: "Invalid option. Please reply with a number between 1-4.",
-            quoted: messageContent,
-            contextInfo: commonContextInfo()
-          });
-        }
-
-        await zk.sendMessage(dest, {
-          react: { text: '⬇️', key: messageContent.key },
-        });
-
-        switch (responseText) {
-          case '1':
-            await zk.sendMessage(dest, {
-              video: { url: videoInfo.nowm },
-              caption: `*${conf.BOT || 'TikTok Downloader'}* - Video (No Watermark)\n${videoInfo.caption || ''}`,
-              contextInfo: commonContextInfo()
-            }, { quoted: messageContent });
-            break;
-
-          case '2':
-            await zk.sendMessage(dest, {
-              document: { url: videoInfo.nowm },
-              mimetype: "video/mp4",
-              fileName: `${conf.BOT || 'TikTok'}_${Date.now()}.mp4`,
-              caption: `*${conf.BOT || 'TikTok Downloader'}* - Video Document\n${videoInfo.caption || ''}`,
-              contextInfo: commonContextInfo()
-            }, { quoted: messageContent });
-            break;
-
-          case '3':
-            await zk.sendMessage(dest, {
-              audio: { url: videoInfo.mp3 },
-              mimetype: "audio/mpeg",
-              caption: `*${conf.BOT || 'TikTok Downloader'}* - Audio\n${videoInfo.caption || ''}`,
-              contextInfo: commonContextInfo()
-            }, { quoted: messageContent });
-            break;
-
-          case '4':
-            await zk.sendMessage(dest, {
-              document: { url: videoInfo.mp3 },
-              mimetype: "audio/mpeg",
-              fileName: `${conf.BOT || 'TikTok'}_${Date.now()}.mp3`,
-              caption: `*${conf.BOT || 'TikTok Downloader'}* - Audio Document\n${videoInfo.caption || ''}`,
-              contextInfo: commonContextInfo()
-            }, { quoted: messageContent });
-            break;
-        }
-
-        await zk.sendMessage(dest, {
-          react: { text: '✅', key: messageContent.key },
-        });
-
-      } catch (error) {
-        console.error("Error handling reply:", error);
-        await zk.sendMessage(dest, {
-          text: "An error occurred while processing your request. Please try again.",
-          quoted: update.messages[0],
-          contextInfo: commonContextInfo()
-        });
-      }
-    };
-
-    zk.ev.on("messages.upsert", replyHandler);
-    setTimeout(() => {
-      zk.ev.off("messages.upsert", replyHandler);
-    }, 300000);
-
-  } catch (error) {
-    console.error("TikTok download error:", error);
-    repondre(zk, dest, ms, `Failed to download TikTok. Error: ${error.message}\nYou can try with another link or check if the video is public.`);
-  }
+    const res = await axios.get(`https://api.vihangayt.me/download/tiktok?url=${encodeURIComponent(arg[0])}`);
+    const video = res.data.data.play || res.data.data.nowm;
+    await zk.sendMessage(dest, { video: { url: video }, caption: "TikTok Video", contextInfo: commonContextInfo() }, { quoted: ms });
+  } catch (err) { repondre(zk, dest, ms, "Error: " + err.message); }
 });
 
-// MEDIAFIRE
+// ================= MEDIAFIRE =================
 bmbtz({
   nomCom: "mediafire",
-  aliases: ["mfire", "mfdl", "mediafiredl"],
+  aliases: ["mfire", "mf"],
   categorie: "Download",
-  reaction: "📦"
+  reaction: "📂"
 }, async (dest, zk, commandeOptions) => {
   const { ms, arg } = commandeOptions;
-
-  if (!arg || !arg[0]) {
-    return repondre(zk, dest, ms, 'Please provide a MediaFire URL!');
-  }
-
-  const mediafireUrl = arg[0].trim();
-  if (!mediafireUrl.includes('https://') || !mediafireUrl.includes('mediafire.com')) {
-    return repondre(zk, dest, ms, "Please provide a valid MediaFire URL.");
-  }
-
+  if (!arg || !arg[0]) return repondre(zk, dest, ms, 'Provide a Mediafire URL!');
   try {
-    const apiUrl = `https://apis-keith.vercel.app/download/mfire?url=${encodeURIComponent(mediafireUrl)}`;
-    const response = await axios.get(apiUrl);
-    const data = response.data;
-
-    if (!data.status || !data.result || !data.result.dl_link) {
-      return repondre(zk, dest, ms, "Could not retrieve file. The link may be invalid or the file unavailable.");
-    }
-
-    const fileInfo = data.result;
-
-    const fileInfoMessage = `
-     *${conf.BOT || 'MediaFire Downloader'} MediaFire Downloader*
-    |__________________________|
-    | *File Name*: ${fileInfo.fileName}
-    | *File Type*: ${fileInfo.fileType}
-    | *File Size*: ${fileInfo.size}
-    | *Upload Date*: ${fileInfo.date}
-    |__________________________|
-    Downloading file...
-    `;
-
-    await zk.sendMessage(dest, {
-      text: fileInfoMessage,
-      contextInfo: commonContextInfo()
-    }, { quoted: ms });
-
-    await zk.sendMessage(dest, {
-      document: {
-        url: fileInfo.dl_link
-      },
-      mimetype: fileInfo.fileType,
-      fileName: fileInfo.fileName,
-      caption: `*${conf.BOT || 'MediaFire Downloader'}*\nHere's your requested file: ${fileInfo.fileName}`,
-      contextInfo: commonContextInfo()
-    });
-
-  } catch (error) {
-    console.error("MediaFire download error:", error);
-    repondre(zk, dest, ms, `Failed to download file. Error: ${error.message}\nPlease check the link and try again.`);
-  }
+    const res = await axios.get(`https://api.vihangayt.me/download/mediafire?url=${encodeURIComponent(arg[0])}`);
+    const file = res.data.data;
+    await zk.sendMessage(dest, { document: { url: file.link }, mimetype: file.mime, fileName: file.filename, caption: "Mediafire File", contextInfo: commonContextInfo() }, { quoted: ms });
+  } catch (err) { repondre(zk, dest, ms, "Error: " + err.message); }
 });
 
-// HENTAIVID
+// ================= HENTAIVID =================
 bmbtz({
   nomCom: "hentaivid",
-  aliases: ["hvid", "hentaidl", "hv"],
-  categorie: "download",
+  aliases: ["hentai"],
+  categorie: "Download",
   reaction: "🔞"
 }, async (dest, zk, commandeOptions) => {
   const { ms, arg } = commandeOptions;
-
+  if (!arg || !arg[0]) return repondre(zk, dest, ms, 'Provide a Hentaivid URL!');
   try {
-    const apiUrl = 'https://apis-keith.vercel.app/dl/hentaivid';
-    const response = await axios.get(apiUrl);
-    const data = response.data;
-
-    if (!data.status || !data.result || data.result.length === 0) {
-      return repondre(zk, dest, ms, "Could not retrieve videos. Please try again later.");
-    }
-
-    const videos = data.result.slice(0, 8);
-
-    let caption = `*${conf.BOT || 'Hentai Downloader'}*\n`;
-    caption += `Available videos (1-8):\n`;
-    caption += `|__________________________|\n`;
-
-    videos.forEach((video, index) => {
-      caption += `| ${index + 1}. ${video.title}\n`;
-      caption += `| 👉 ${video.category}\n`;
-      caption += `| 👁️ ${video.views_count} views | 🔗 ${video.share_count} shares\n`;
-      caption += `|__________________________|\n`;
-    });
-
-    caption += `\nReply with a number (1-8) to download that video.`;
-
-    const message = await zk.sendMessage(dest, {
-      text: caption,
-      contextInfo: commonContextInfo()
-    }, { quoted: ms });
-
-    const messageId = message.key.id;
-
-    const replyHandler = async (update) => {
-      try {
-        const messageContent = update.messages[0];
-        if (!messageContent.message) return;
-
-        const isReply = messageContent.message.extendedTextMessage?.contextInfo?.stanzaId === messageId;
-        if (!isReply) return;
-
-        const responseText = messageContent.message.conversation ||
-          messageContent.message.extendedTextMessage?.text;
-
-        const selectedNum = parseInt(responseText);
-        if (isNaN(selectedNum) || selectedNum < 1 || selectedNum > videos.length) {
-          return await zk.sendMessage(dest, {
-            text: `Invalid selection. Please reply with a number between 1-${videos.length}.`,
-            quoted: messageContent,
-            contextInfo: commonContextInfo()
-          });
-        }
-
-        const selectedVideo = videos[selectedNum - 1];
-
-        await zk.sendMessage(dest, {
-          react: { text: '⬇️', key: messageContent.key },
-        });
-
-        await zk.sendMessage(dest, {
-          video: { url: selectedVideo.media.video_url },
-          caption: `*${selectedVideo.title}*\nCategory: ${selectedVideo.category}\nViews: ${selectedVideo.views_count} | Shares: ${selectedVideo.share_count}`,
-          contextInfo: commonContextInfo()
-        }, { quoted: messageContent });
-
-        await zk.sendMessage(dest, {
-          react: { text: '✅', key: messageContent.key },
-        });
-
-      } catch (error) {
-        console.error("Error handling reply:", error);
-        await zk.sendMessage(dest, {
-          text: "An error occurred while processing your request. Please try again.",
-          quoted: update.messages[0],
-          contextInfo: commonContextInfo()
-        });
-      }
-    };
-
-    zk.ev.on("messages.upsert", replyHandler);
-    setTimeout(() => {
-      zk.ev.off("messages.upsert", replyHandler);
-    }, 300000);
-
-  } catch (error) {
-    console.error("Hentai video download error:", error);
-    repondre(zk, dest, ms, `Failed to fetch videos. Error: ${error.message}`);
-  }
+    const res = await axios.get(`https://api.vihangayt.me/download/hentaivid?url=${encodeURIComponent(arg[0])}`);
+    const video = res.data.data.video;
+    await zk.sendMessage(dest, { video: { url: video }, caption: "Hentaivid Video", contextInfo: commonContextInfo() }, { quoted: ms });
+  } catch (err) { repondre(zk, dest, ms, "Error: " + err.message); }
 });
