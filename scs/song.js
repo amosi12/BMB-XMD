@@ -6,7 +6,7 @@ const { igdl } = require('ruhend-scraper');
 const conf = require(__dirname + "/../settings");
 const getFBInfo = require("@xaviabot/fb-downloader");
 
-// Context info function (hakuna constants za participant, remote_jid, title, body, thumbnail)
+// Context info function (hakuna constants, hakuna namba ya simu, hakuna body, hakuna thumbnail)
 function commonContextInfo() {
   try {
     return {
@@ -19,9 +19,8 @@ function commonContextInfo() {
       },
       externalAdReply: {
         showAdAttribution: true,
-        // title itatumia conf.BOT au 'Bmb Tech Updates' moja kwa moja
         title: conf.BOT || 'Bmb Tech Updates',
-        sourceUrl: conf.GURL || 'https://wa.me/254114141192',
+        // Namba ya simu na sourceUrl imeondolewa kabisa hapa!
         mediaType: 1,
         renderLargerThumbnail: true,
       },
