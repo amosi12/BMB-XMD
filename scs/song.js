@@ -6,17 +6,10 @@ const { igdl } = require('ruhend-scraper');
 const conf = require(__dirname + "/../settings");
 const getFBInfo = require("@xaviabot/fb-downloader");
 
-// Constants for context info defaults
-const DEFAULT_PARTICIPANT = '0@s.whatsapp.net';
-const DEFAULT_REMOTE_JID = 'status@broadcast';
-const DEFAULT_TITLE = "Bmb Tech Updates";
-const DEFAULT_BODY = "🟢 Powering Smart Automation 🟢";
-
-// Context info function (thumbnailUrl imeondolewa)
+// Context info function (hakuna constants za participant, remote_jid, title, body, thumbnail)
 function commonContextInfo() {
   try {
     return {
-      mentionedJid: [DEFAULT_PARTICIPANT],
       forwardingScore: 999,
       isForwarded: true,
       forwardedNewsletterMessageInfo: {
@@ -26,9 +19,8 @@ function commonContextInfo() {
       },
       externalAdReply: {
         showAdAttribution: true,
-        title: `${conf.BOT || DEFAULT_TITLE}`,
-        body: DEFAULT_BODY,
-        // thumbnailUrl imeondolewa hapa
+        // title itatumia conf.BOT au 'Bmb Tech Updates' moja kwa moja
+        title: conf.BOT || 'Bmb Tech Updates',
         sourceUrl: conf.GURL || 'https://wa.me/254114141192',
         mediaType: 1,
         renderLargerThumbnail: true,
